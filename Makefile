@@ -1,6 +1,6 @@
 CC = g++
 LFLAGS = -lX11
-SRC = main.cpp
+SRC = src/main.cpp src/keys.cpp
 OBJ = $(SRC:.c=.o)
 
 eza: $(OBJ)
@@ -11,3 +11,6 @@ clean:
 
 main.o: main.cpp
 	$(CC) -c main.cpp
+
+keys.o: keys.cpp
+	$(CC) -c keys.cpp
