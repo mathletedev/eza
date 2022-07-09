@@ -1,4 +1,5 @@
 #include "keys.h"
+#include <X11/Xlib.h>
 
 KeySym charToKeysym(char c) {
 	switch (c) {
@@ -154,16 +155,34 @@ XKeyEvent createKeyEvent(Display *dp, Window &win, Window &root, bool down,
 	return event;
 }
 
-void sendString(std::string s, Display *dp, Window &win, Window &root) {
+void sendString(std::string s, std::map<unsigned int, int> *keys, Display *dp,
+		Window &win, Window &root) {
 	for (char &c : s) {
-		XKeyEvent evt =
-		    createKeyEvent(dp, win, root, true,
-				   XKeysymToKeycode(dp, charToKeysym(c)), 0);
+		int kc = XKeysymToKeycode(dp, charToKeysym(c));
+		(*keys)[kc]++;
+
+		XKeyEvent evt = createKeyEvent(dp, win, root, true, kc, 0);
 		XSendEvent(evt.display, evt.window, 1, KeyPressMask,
 			   (XEvent *)&evt);
-		evt = createKeyEvent(dp, win, root, false,
-				     XKeysymToKeycode(dp, charToKeysym(c)), 0);
+
+		evt = createKeyEvent(dp, win, root, false, kc, 0);
 		XSendEvent(evt.display, evt.window, 1, KeyPressMask,
 			   (XEvent *)&evt);
+	}
+}
+
+void grabAll(std::map<char, std::string> map, Display *dp, Window root) {
+	for (std::map<char, std::string>::iterator iter = map.begin();
+	     iter != map.end(); ++iter) {
+		XGrabKey(dp, XKeysymToKeycode(dp, charToKeysym(iter->first)),
+			 AnyModifier, root, 1, GrabModeAsync, GrabModeAsync);
+	}
+}
+
+void ungrabAll(std::map<char, std::string> map, Display *dp, Window root) {
+	for (std::map<char, std::string>::iterator iter = map.begin();
+	     iter != map.end(); ++iter) {
+		XUngrabKey(dp, XKeysymToKeycode(dp, charToKeysym(iter->first)),
+			   AnyModifier, root);
 	}
 }

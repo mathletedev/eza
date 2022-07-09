@@ -1,4 +1,5 @@
 #include "keys.h"
+#include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <iostream>
@@ -10,18 +11,15 @@ int main() {
 		return 1;
 
 	std::map<char, std::string> map;
-	map['a'] = "hello";
+	map['a'] = "bag";
 
 	Window root = XDefaultRootWindow(dp);
 
-	for (std::map<char, std::string>::iterator iter = map.begin();
-	     iter != map.end(); ++iter) {
-		XGrabKey(dp, XKeysymToKeycode(dp, charToKeysym(iter->first)),
-			 AnyModifier, root, 1, GrabModeAsync, GrabModeAsync);
-	}
+	grabAll(map, dp, root);
 
 	Window win;
 
+	std::map<unsigned int, int> keys;
 	bool shift = false;
 
 	while (1) {
@@ -35,8 +33,6 @@ int main() {
 			XEvent evt;
 			XNextEvent(dp, &evt);
 
-			std::cout << evt.xkey.keycode << std::endl;
-
 			if (evt.xkey.keycode == 50)
 				shift = evt.type == KeyPress;
 			if (evt.xkey.keycode == 9 && shift) {
@@ -44,10 +40,21 @@ int main() {
 				break;
 			}
 
+			if (evt.type != KeyPress)
+				break;
+
+			if (!keys[evt.xkey.keycode])
+				keys[evt.xkey.keycode] = 0;
+
 			std::map<char, std::string>::iterator res =
 			    map.find(*XKeysymToString(evt.xkey.keycode));
-			if (res != map.end())
-				sendString(res->second, dp, win, root);
+
+			if (res != map.end() && keys[evt.xkey.keycode] == 0) {
+				ungrabAll(map, dp, root);
+				sendString(res->second, &keys, dp, win, root);
+				grabAll(map, dp, root);
+			} else if (keys[evt.xkey.keycode] > 0)
+				keys[evt.xkey.keycode]--;
 		}
 
 		if (done)
